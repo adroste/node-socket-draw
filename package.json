@@ -1,0 +1,9 @@
+{
+  "name": "node-draw",
+  "description": "Realtime collab drawing test",
+  "author": "progmem",
+  "dependencies" : {
+    "express": "*",
+    "socket.io": "*"
+  }
+}

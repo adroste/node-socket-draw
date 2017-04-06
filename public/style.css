@@ -1,0 +1,44 @@
+body{
+    margin: 0;
+    padding: 0;
+    font: 16px "Helvetica neue", Helvetica, Arial, sans-serif;
+    color: #333;
+}
+header{
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: auto;
+    padding: 0 0.5em;
+    background-color: #87b7c8;
+    font-size: 24px;
+    line-height: 2em;
+    height: 2em;
+    color: #fff;
+}
+
+.text-red{
+    color: red;
+}
+
+.text-green{
+    color: greenyellow;
+}
+
+.text-yellow{
+    color: yellow;
+}
+
+#drawbox{
+    margin: 60px 24px;
+    /*height: 480px;
+    width: 640px;*/
+    border: solid black 1px;
+}
+
+#clear{
+    margin: 24px;
+    font-size: 20px;
+}
