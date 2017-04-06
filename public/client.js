@@ -114,7 +114,7 @@ $(document).ready(function(){
     socket.on('latency', function() {
         var t = Date.now() - startTime;
         // time out
-        if (t < 10)
+        if (t < 10000)
             calcLatencyAvg(t);
     });
 
