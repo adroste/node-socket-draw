@@ -9,9 +9,11 @@ function createPointFromPoint(p) {
 }
 
 // line class
-function Line(p1, p2) {
+function Line(strokeId, p1, p2, color) {
+    this.strokeId = strokeId;
     this.p1 = createPointFromPoint(p1);
     this.p2 = createPointFromPoint(p2);
+    this.color = color;
 }
 
 
@@ -35,7 +37,6 @@ $(document).ready(function(){
     context = drawbox[0].getContext("2d");
 
     // draw context settings
-    context.strokeStyle = "#ff0000";
     context.lineJoin = "round";
     context.lineWidth = 5;
 
@@ -80,13 +81,14 @@ $(document).ready(function(){
 
     // methods drawing / paths
     function addLine(p1, p2) {
-        paths.push(new Line(p1, p2));
+        paths.push(new Line(p1, p2, $('#color').val()));
         drawPath(paths.length - 1);
         sendPath(paths.length - 1);
     }
 
     function drawPath(i){
         context.beginPath();
+        context.strokeStyle = paths[i].color;
         context.moveTo(paths[i].p1.x, paths[i].p1.y);
         context.lineTo(paths[i].p2.x, paths[i].p2.y);
         context.closePath();
