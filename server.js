@@ -21,17 +21,13 @@ app.get('/', function (req, res) {
 
 
 // data
-var clickX = new Array();
-var clickY = new Array();
-var clickDrag = new Array();
+var paths = [];
 
 function clear(){
-    clickX.splice(0, clickX.length);
-    clickY.splice(0, clickY.length);
-    clickDrag.splice(0, clickDrag.length);
+    paths.splice(0, paths.length);
 }
 
-function syncarrays(x, y, d) {
+function syncpaths(paths) {
     //TODO
 }
 
@@ -46,19 +42,17 @@ io.sockets.on('connection', function (socket) {
     // wenn ein Benutzer einen Pfad sendet
     socket.on('path', function (data) {
 
-        clickX.push(data.x);
-        clickY.push(data.y);
-        clickDrag.push(data.d);
+        paths.push(data.line);
 
         // send to everyone but sender
-        socket.broadcast.emit('path', { t: data.t, x: data.x, y: data.y, d: data.d });
+        socket.broadcast.emit('path', { line: data.line });
     });
 
     socket.on('sync', function (data) {
-        syncarrays(data.x, data.y, data.d);
+        syncpaths(data.paths);
 
         // sync all clients
-        io.sockets.emit('sync', { new: 1, x: clickX, y: clickY, d: clickDrag });
+        io.sockets.emit('sync', { new: 1, paths: paths });
     });
 
     socket.on('clear', function (data) {

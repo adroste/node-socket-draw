@@ -1,62 +1,94 @@
+// point class
+function Point(x, y) {
+    this.x = x;
+    this.y = y;
+}
+
+function createPointFromPoint(p) {
+    return new Point(p.x, p.y);
+}
+
+// line class
+function Line(p1, p2) {
+    this.p1 = createPointFromPoint(p1);
+    this.p2 = createPointFromPoint(p2);
+}
+
+
+
 $(document).ready(function(){
 
+    ///////////
+    // Drawing
+    ///////////
 
+    // settings
     var enabled = true;
 
+    // vars
+    var paths = [];
+    var lastPoint = new Point(-1, -1);
+    var paint = false;
+
     // drawing context
-    context = $('#drawbox')[0].getContext("2d");
+    drawbox = $('#drawbox');
+    context = drawbox[0].getContext("2d");
+
+    // draw context settings
     context.strokeStyle = "#ff0000";
     context.lineJoin = "round";
     context.lineWidth = 5;
 
-    $('#drawbox').mousedown(function(e){
+    // events
+    drawbox.mousedown(function(e){
         var mouseX = e.pageX - this.offsetLeft;
         var mouseY = e.pageY - this.offsetTop;
 
         paint = true;
-        addClick(e.pageX - this.offsetLeft, e.pageY - this.offsetTop, 0);
-        //redraw();
+        lastPoint.x = mouseX;
+        lastPoint.y = mouseY;
     });
 
-    $('#drawbox').mousemove(function(e){
+    drawbox.mousemove(function(e){
         if(paint){
-            addClick(e.pageX - this.offsetLeft, e.pageY - this.offsetTop, 1);
-            //redraw();
+            var mouseX = e.pageX - this.offsetLeft;
+            var mouseY = e.pageY - this.offsetTop;
+
+            addLine(lastPoint, new Point(mouseX, mouseY));
+            lastPoint.x = mouseX;
+            lastPoint.y = mouseY;
         }
     });
 
-    $('#drawbox').mouseup(function(e){
+    drawbox.mouseup(function(e){
+        var mouseX = e.pageX - this.offsetLeft;
+        var mouseY = e.pageY - this.offsetTop;
+        if (lastPoint.x === mouseX && lastPoint.y === mouseY)
+            addLine(lastPoint, new Point(lastPoint.x - 1, lastPoint.y - 1));
         paint = false;
     });
 
-    $('#drawbox').mouseleave(function(e){
+    drawbox.mouseleave(function(e){
         paint = false;
     });
 
-    var clickX = new Array();
-    var clickY = new Array();
-    var clickDrag = new Array();
-    var paint;
+    $('#clear').mouseup(function (e) {
+        clear();
+        sendClear();
+    });
 
-    function addClick(x, y, dragging){
-        clickX.push(x);
-        clickY.push(y);
-        clickDrag.push(dragging);
 
-        // draw only new part #performance
-        drawPath(clickX.length - 1);
-        sendPath(clickX.length - 1);
+    // methods drawing / paths
+    function addLine(p1, p2) {
+        paths.push(new Line(p1, p2));
+        drawPath(paths.length - 1);
+        sendPath(paths.length - 1);
     }
 
     function drawPath(i){
         context.beginPath();
-        if(clickDrag[i] && i){
-            context.moveTo(clickX[i-1], clickY[i-1]);
-        }else{
-            // -1 in case you want to make a point otherwise nothing will get drawn
-            context.moveTo(clickX[i]-1, clickY[i]);
-        }
-        context.lineTo(clickX[i], clickY[i]);
+        context.moveTo(paths[i].p1.x, paths[i].p1.y);
+        context.lineTo(paths[i].p2.x, paths[i].p2.y);
         context.closePath();
         context.stroke();
     }
@@ -64,27 +96,25 @@ $(document).ready(function(){
     function redraw(){
         context.clearRect(0, 0, context.canvas.width, context.canvas.height); // Clears the canvas
 
-        for(var i=0; i < clickX.length; i++) {
+        for(var i=0; i < paths.length; i++) {
             drawPath(i);
         }
     }
 
-    $('#clear').mouseup(function (e) {
-        clear();
-        sendClear();
-    });
-
     function clear(){
-        clickX.splice(0, clickX.length);
-        clickY.splice(0, clickY.length);
-        clickDrag.splice(0, clickDrag.length);
+        paths.splice(0, paths.length);
         paint = false;
         redraw();
     }
 
 
-
+    /////////////
     // WebSocket
+    /////////////
+
+    var socket = io.connect();
+
+    // latency
     var latencyavg = 0;
     var latencymax = 0;
     var latencynr = 0;
@@ -102,15 +132,12 @@ $(document).ready(function(){
 
     var startTime = 0;
 
-
-    var socket = io.connect();
-
-
     setInterval(function() {
         startTime = Date.now();
         socket.emit('latency');
     }, 2000);
 
+    // events
     socket.on('latency', function() {
         var t = Date.now() - startTime;
         // time out
@@ -118,12 +145,9 @@ $(document).ready(function(){
             calcLatencyAvg(t);
     });
 
-    // neue Nachricht
     socket.on('path', function (data) {
-        clickX.push(data.x);
-        clickY.push(data.y);
-        clickDrag.push(data.d);
-        drawPath(clickX.length - 1);
+        paths.push(data.line);
+        drawPath(paths.length - 1);
     });
 
     socket.on('clear', function (data) {
@@ -137,7 +161,7 @@ $(document).ready(function(){
         state.addClass('text-yellow');
 
         enabled = false;
-        socket.emit('sync', { x: clickX, y: clickY, d: clickDrag });
+        socket.emit('sync', { paths: paths });
     });
 
 
@@ -150,9 +174,7 @@ $(document).ready(function(){
         enabled = false;
 
         if (data.new) {
-            clickX = data.x;
-            clickY = data.y;
-            clickDrag = data.d;
+            paths = data.paths;
             redraw();
         }
 
@@ -176,7 +198,7 @@ $(document).ready(function(){
     // Nachricht senden
     function sendPath(i){
         // Socket senden
-        socket.emit('path', { x: clickX[i], y: clickY[i], d: clickDrag[i] });
+        socket.emit('path', { line: paths[i] });
     }
 
     function sendClear(){
