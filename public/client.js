@@ -27,13 +27,13 @@ function distanceOfPoints(p1, p2) {
 }
 
 // line class
-function Line(strokeId, p1, p2, color) {
+function Line(strokeId, p1, p2, color, thickness) {
     // strokeID consists of sessionID + stroke num.
     this.strokeId = strokeId;
     this.p1 = createPointFromPoint(p1);
     this.p2 = createPointFromPoint(p2);
     this.color = color;
-    this.thickness = 5;
+    this.thickness = thickness;
 }
 
 function isPointOnLine(p, line, threshold) {
@@ -119,7 +119,13 @@ $(document).ready(function(){
 
     // methods drawing / paths
     function addLine(p1, p2) {
-        paths.push(new Line(sessionId + '_' + strokeNum, p1, p2, $('#color').val()));
+        var thickness = 5;
+        if ($('#radio_thickness_s').prop('checked'))
+            thickness = 2;
+        else if ($('#radio_thickness_l').prop('checked'))
+            thickness = 8;
+
+        paths.push(new Line(sessionId + '_' + strokeNum, p1, p2, $('#color').val(), thickness));
         drawPath(paths.length - 1);
         sendPath(paths.length - 1);
     }
