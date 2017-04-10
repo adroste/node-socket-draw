@@ -1,3 +1,15 @@
+// guid generator
+function guid() {
+    return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
+        s4() + '-' + s4() + s4() + s4();
+}
+
+function s4() {
+    return Math.floor((1 + Math.random()) * 0x10000)
+        .toString(16)
+        .substring(1);
+}
+
 // point class
 function Point(x, y) {
     this.x = x;
@@ -8,12 +20,24 @@ function createPointFromPoint(p) {
     return new Point(p.x, p.y);
 }
 
+function distanceOfPoints(p1, p2) {
+    var dx = p1.x - p2.x;
+    var dy = p1.y - p2.y;
+    return Math.sqrt(dx * dx + dy * dy);
+}
+
 // line class
 function Line(strokeId, p1, p2, color) {
+    // strokeID consists of sessionID + stroke num.
     this.strokeId = strokeId;
     this.p1 = createPointFromPoint(p1);
     this.p2 = createPointFromPoint(p2);
     this.color = color;
+    this.thickness = 5;
+}
+
+function isPointOnLine(p, line, threshold) {
+    return distanceOfPoints(p, line.p1) + distanceOfPoints(p, line.p2) - distanceOfPoints(line.p1, line.p2) < threshold;
 }
 
 
@@ -26,11 +50,14 @@ $(document).ready(function(){
 
     // settings
     var enabled = true;
+    var sessionId = guid();
 
     // vars
     var paths = [];
     var lastPoint = new Point(-1, -1);
+    var strokeNum = 0;
     var paint = false;
+    var erase = false;
 
     // drawing context
     drawbox = $('#drawbox');
@@ -38,12 +65,17 @@ $(document).ready(function(){
 
     // draw context settings
     context.lineJoin = "round";
-    context.lineWidth = 5;
 
     // events
     drawbox.mousedown(function(e){
         var mouseX = e.pageX - this.offsetLeft;
         var mouseY = e.pageY - this.offsetTop;
+
+        if($('#eraser').prop('checked')) {
+            eraseStroke(mouseX, mouseY);
+            erase = true;
+            return;
+        }
 
         paint = true;
         lastPoint.x = mouseX;
@@ -51,26 +83,32 @@ $(document).ready(function(){
     });
 
     drawbox.mousemove(function(e){
-        if(paint){
-            var mouseX = e.pageX - this.offsetLeft;
-            var mouseY = e.pageY - this.offsetTop;
+        var mouseX = e.pageX - this.offsetLeft;
+        var mouseY = e.pageY - this.offsetTop;
 
+        if(paint){
             addLine(lastPoint, new Point(mouseX, mouseY));
             lastPoint.x = mouseX;
             lastPoint.y = mouseY;
+        }
+        else if (erase) {
+            eraseStroke(mouseX, mouseY);
         }
     });
 
     drawbox.mouseup(function(e){
         var mouseX = e.pageX - this.offsetLeft;
         var mouseY = e.pageY - this.offsetTop;
-        if (lastPoint.x === mouseX && lastPoint.y === mouseY)
+        if (paint && lastPoint.x === mouseX && lastPoint.y === mouseY)
             addLine(lastPoint, new Point(lastPoint.x - 1, lastPoint.y - 1));
         paint = false;
+        erase = false;
+        strokeNum++;
     });
 
     drawbox.mouseleave(function(e){
         paint = false;
+        erase = false;
     });
 
     $('#clear').mouseup(function (e) {
@@ -81,7 +119,7 @@ $(document).ready(function(){
 
     // methods drawing / paths
     function addLine(p1, p2) {
-        paths.push(new Line(p1, p2, $('#color').val()));
+        paths.push(new Line(sessionId + '_' + strokeNum, p1, p2, $('#color').val()));
         drawPath(paths.length - 1);
         sendPath(paths.length - 1);
     }
@@ -89,6 +127,7 @@ $(document).ready(function(){
     function drawPath(i){
         context.beginPath();
         context.strokeStyle = paths[i].color;
+        context.lineWidth = paths[i].thickness;
         context.moveTo(paths[i].p1.x, paths[i].p1.y);
         context.lineTo(paths[i].p2.x, paths[i].p2.y);
         context.closePath();
@@ -106,6 +145,30 @@ $(document).ready(function(){
     function clear(){
         paths.splice(0, paths.length);
         paint = false;
+        redraw();
+    }
+
+    function eraseStroke(x, y) {
+        // find stroke to remove
+        var ids = [];
+        for (var i = 0; i < paths.length; i++) {
+            if (isPointOnLine(new Point(x, y), paths[i], paths[i].thickness)) {
+                ids.push(paths[i].strokeId);
+            }
+        }
+        sendRemoveLines(ids);
+        removeLinesByID(ids);
+    }
+
+    function removeLinesByID(ids) {
+        // remove strokes
+        for (var j = 0; j < ids.length; j++) {
+            var k = paths.length;
+            while (k--) {
+                if (paths[k].strokeId === ids[j])
+                    paths.splice(k, 1);
+            }
+        }
         redraw();
     }
 
@@ -156,6 +219,10 @@ $(document).ready(function(){
         clear();
     });
 
+    socket.on('removeLines', function (data) {
+        removeLinesByID(data.ids);
+    });
+
     socket.on('connect', function (e) {
         var state = $('#state');
         state.text("wait for sync");
@@ -197,13 +264,16 @@ $(document).ready(function(){
         enabled = true;
     });
 
-    // Nachricht senden
+    // send methods
     function sendPath(i){
-        // Socket senden
         socket.emit('path', { line: paths[i] });
     }
 
     function sendClear(){
         socket.emit('clear');
+    }
+
+    function sendRemoveLines(ids) {
+        socket.emit('removeLines', { ids: ids });
     }
 });
