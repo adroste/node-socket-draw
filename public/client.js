@@ -212,12 +212,22 @@ $(document).ready(function(){
         socket.emit('latency');
     }, 2000);
 
+    // connected clients
+    setInterval(function () {
+        socket.emit('clientsCount');
+    }, 5000);
+
+
     // events
     socket.on('latency', function() {
         var t = Date.now() - startTime;
         // time out
         if (t < 10000)
             calcLatencyAvg(t);
+    });
+
+    socket.on('clientsCount', function (data) {
+        $('#clientsCount').text(data.clientsCount);
     });
 
     socket.on('path', function (data) {

@@ -46,6 +46,10 @@ function syncpaths(paths) {
 // Websocket
 io.sockets.on('connection', function (socket) {
 
+    socket.on('clientsCount', function (data) {
+        socket.emit('clientsCount', { clientsCount: io.engine.clientsCount });
+    });
+
     socket.on('latency', function (data) {
         socket.emit('latency');
     });
