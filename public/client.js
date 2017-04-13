@@ -51,6 +51,7 @@ $(document).ready(function(){
     // settings
     var enabled = true;
     var sessionId = guid();
+    var resolution = 4;
 
     // vars
     var paths = [];
@@ -63,8 +64,11 @@ $(document).ready(function(){
     drawbox = $('#drawbox');
     context = drawbox[0].getContext("2d");
 
-    // draw context settings
+    // init + draw context settings
+    context.canvas.width = drawbox.width() * resolution;
+    context.canvas.height = drawbox.height() * resolution;
     context.lineJoin = "round";
+    context.scale(resolution, resolution);
 
     // events
     drawbox.mousedown(function(e){
